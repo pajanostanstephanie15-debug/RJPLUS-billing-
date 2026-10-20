@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RJPLUS Telecommunication Services - Management System</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+<!-- SIGN IN OVERLAY / MODAL -->
+<div id="loginModal" class="login-overlay">
+    <div class="login-box">
+        <div class="login-header">
+            <img src="logo.png" alt="RJPLUS Logo" class="login-logo">
+            <h2>RJPLUS TELECOMMUNICATION</h2>
+            <p>System Login</p>
+        </div>
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label for="loginEmail">Email / Username</label>
+                <input type="text" id="loginEmail" placeholder="Enter Email" required>
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">Password</label>
+                <input type="password" id="loginPassword" placeholder="Enter Password" required>
+            </div>
+            <div id="loginErrorMessage" class="error-message" style="display: none; color: #f87171; font-size: 0.85rem; margin-top: 0.5rem;"></div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 1rem; width: 100%;">Sign In</button>
+        </form>
+    </div>
+</div>
+
+<!-- MAIN APP LAYOUT WITH SIDEBAR -->
+<div class="app-layout" id="mainApp" style="display: none;">
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="sidebar no-print">
+        <div class="sidebar-logo-container">
+            <img src="logo.png" alt="RJPLUS Logo" class="sidebar-logo">
+            <div class="sidebar-title">
+                <h2>RJPLUS</h2>
+                <p>TELECOMMUNICATION SERVICES</p>
+            </div>
+        </div>
+
+        <div class="sidebar-menu-card">
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" onclick="switchTab(event, 'dashboard')">DASHBOARD</button>
+                <button class="nav-btn" onclick="switchTab(event, 'clients')">CLIENT</button>
+                <button class="nav-btn" onclick="switchTab(event, 'expenses')">EXPENSES</button>
+                <button class="nav-btn" onclick="switchTab(event, 'payments')">PAYMENT</button>
+                <button class="nav-btn" onclick="switchTab(event, 'soa')">SOA</button>
+                <button class="nav-btn" onclick="switchTab(event, 'invoice')">OFFICIAL INVOICE</button>
+            </nav>
+        </div>
+
+        <div style="padding: 1rem; margin-top: auto;">
+            <button onclick="handleLogout()" class="btn btn-secondary" style="width: 100%; font-size: 0.8rem;">Logout</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content">
+        <div id="dashboardNoticeAlert" class="card no-print" style="display: none; background: rgba(245, 158, 11, 0.15); border-color: #f59e0b; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="color: #fbbf24;">Billing Notice Alert</strong>
+                <span id="noticeBadgeCount" class="badge" style="background: #f59e0b; color: black;">0 Action Needed</span>
+            </div>
+            <p id="noticeAlertText" style="margin-top: 0.5rem; font-size: 0.9rem; color: #fef3c7;"></p>
+        </div>
+
+        <!-- 1. DASHBOARD TAB -->
+        <div id="tab-dashboard" class="tab-content active no-print">
+            <div class="dashboard-overview">
+                <div class="stat-card">
+                    <h3>Total Revenue</h3>
+                    <div class="amount green-text" id="totalRevenue">₱0.00</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Expenses</h3>
+                    <div class="amount green-text" id="totalExpenses">₱0.00</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Net Profit</h3>
+                    <div class="amount green-text" id="netProfit">₱0.00</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Account Receivables</h3>
+                    <div class="amount green-text" id="accountReceivables">₱0.00</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Payments Received</h3>
+                    <div class="amount green-text" id="paymentsReceived">₱0.00</div>
+                </div>
+            </div>
+
+            <div class="status-bar">
+                <div>
+                    <span class="status-label">Active Clients</span>
+                    <span class="status-val green-text" id="cntActive">0</span>
+                </div>
+                <div>
+                    <span class="status-label">Inactive Clients</span>
+                    <span class="status-val green-text" id="cntInactive">0</span>
+                </div>
+                <div>
+                    <span class="status-label">Pending</span>
+                    <span class="status-val green-text" id="cntPending">0</span>
+                </div>
+                <div>
+                    <span class="status-label">Suspended</span>
+                    <span class="status-val green-text" id="cntSuspended">0</span>
+                </div>
+                <div>
+                    <span class="status-label">Collection Rate</span>
+                    <span class="status-val green-text" id="collectionRate">0.00%</span>
+                </div>
+                <div>
+                    <span class="status-label">Churn Rate</span>
+                    <span class="status-val green-text" id="churnRate">0.00%</span>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 1.5rem; padding: 1rem;">
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <label for="filterBranchSelect" style="font-weight: bold; font-size: 0.9rem;">Filter Location:</label>
+                    <select id="filterBranchSelect" onchange="updateSystem()" style="max-width: 250px;">
+                        <option value="ALL">All Locations</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="card chart-card">
+                    <h3 style="margin-bottom: 1rem; font-size: 0.9rem; text-align: center; font-family: 'Poppins', sans-serif; letter-spacing: 0.03em;">REVENUE <span style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">vs</span> EXPENSES <span style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">vs</span> PROFIT</h3>
+                    <canvas id="barChart"></canvas>
+                </div>
+                <div class="card chart-card">
+                    <h3 style="margin-bottom: 1rem; font-size: 0.9rem; text-align: center; font-family: 'Poppins', sans-serif; letter-spacing: 0.03em;">PAYMENTS <span style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">vs</span> ACCOUNT RECEIVABLE</h3>
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. CLIENTS TAB -->
+        <div id="tab-clients" class="tab-content no-print">
+            <div class="card" style="width: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2>Subscriber Records</h2>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button onclick="openAddSubscriberModal()" class="btn btn-primary" style="width: auto; padding: 0.5rem 1rem;">+ Add Subscriber</button>
+                        <button onclick="openManageLocationsModal()" class="btn btn-accent" style="width: auto; padding: 0.5rem 1rem;">Manage Locations</button>
+                        <button onclick="exportClientsToCSV()" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem;">Export CSV</button>
+                    </div>
+                </div>
+
+                <div id="quickFilterContainer" style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;"></div>
+
+                <div class="form-group" style="margin-bottom: 1.2rem;">
+                    <input type="text" id="searchClientInput" placeholder="Search name, VLAN ID, location or email..." onkeyup="handleClientSearch()" style="width: 100%; padding: 0.75rem; border-radius: 8px; background: #0f172a; border: 1px solid #334155; color: white;">
+                </div>
+
+                <div class="table-wrapper">
+                    <table style="width: 100%; text-align: left; border-collapse: collapse;">
+                        <thead>
+                        <tr style="border-bottom: 1px solid #334155; color: #94a3b8; font-size: 0.85rem;">
+                            <th style="padding: 0.75rem;">Start Date</th>
+                            <th style="padding: 0.75rem;">Subscriber's Name</th>
+                            <th style="padding: 0.75rem;">VLAN ID</th>
+                            <th style="padding: 0.75rem;">Location</th>
+                            <th style="padding: 0.75rem;">Balance Due</th>
+                            <th style="padding: 0.75rem;">Status</th>
+                            <th style="padding: 0.75rem; text-align: center;">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody id="clientTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" style="width: auto; padding: 0.4rem 1rem;" onclick="changePage(-1)">Prev</button>
+                    <span id="pageInfo" style="font-size: 0.85rem; color: #94a3b8;">Page 1 of 1</span>
+                    <button class="btn btn-secondary" style="width: auto; padding: 0.4rem 1rem;" onclick="changePage(1)">Next</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. EXPENSES TAB -->
+        <div id="tab-expenses" class="tab-content no-print">
+            <div class="main-layout">
+                <div class="column">
+                    <div class="card">
+                        <h2>Record Expense</h2>
+                        <form id="expenseForm" style="margin-top: 1rem;" onsubmit="handleExpenseSubmit(event)">
+                            <div class="form-group">
+                                <label for="expBranch">Location</label>
+                                <select id="expBranch" name="branch" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="expDesc">Description</label>
+                                <input type="text" id="expDesc" name="description" placeholder="e.g. Electricity, Fiber Repair" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="expAmount">Amount (₱)</label>
+                                    <input type="number" id="expAmount" name="amount" step="0.01" min="0" placeholder="1000" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="expDate">Date</label>
+                                    <input type="date" id="expDate" name="date" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Expense</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="card">
+                        <h2>Expense Logs</h2>
+                        <div class="table-wrapper" style="margin-top: 1rem;">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Location</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Action</th>
+                                </tr>
+                                </thead>
+                                <tbody id="expenseTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. PAYMENTS TAB -->
+        <div id="tab-payments" class="tab-content no-print">
+            <div class="main-layout">
+                <div class="column">
+                    <div class="card">
+                        <h2>Record Client Payment</h2>
+                        <form id="paymentForm" style="margin-top: 1rem;">
+                            <div class="form-group">
+                                <label for="pClientSelect">Select Client</label>
+                                <select id="pClientSelect" required></select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="pAmount">Payment Amount (₱)</label>
+                                    <input type="number" id="pAmount" placeholder="1000" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pDate">Payment Date</label>
+                                    <input type="date" id="pDate" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-accent">Submit Payment & Auto-Deduct Balance</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="card">
+                        <h2>Recent Payment Transactions</h2>
+                        <div class="table-wrapper" style="margin-top: 1rem;">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Client Name</th>
+                                    <th>Amount Paid</th>
+                                    <th>Action</th>
+                                </tr>
+                                </thead>
+                                <tbody id="paymentTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. SOA TAB -->
+        <div id="tab-soa" class="tab-content no-print">
+            <div class="card" style="max-width: 800px; margin: 0 auto;">
+                <h2>Generate Statement of Account (SOA)</h2>
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label for="soaClientSelect">Select Subscriber</label>
+                    <select id="soaClientSelect"></select>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="generateSOA()" style="margin-top: 1rem;">Generate SOA</button>
+
+                <div id="soaDisplay" class="soa-container" style="display: none; margin-top: 1.5rem; background: rgba(15, 23, 42, 0.6); padding: 1.5rem; border-radius: 0.5rem; border: 1px solid var(--border);">
+                    <h2>STATEMENT OF ACCOUNT</h2>
+                    <p id="soaDate" style="font-size: 0.8rem; color: #94a3b8;"></p>
+                    <hr style="margin: 0.5rem 0; border-color: var(--border);">
+                    <p><strong>Client:</strong> <span id="soaName"></span></p>
+                    <p><strong>VLAN ID:</strong> <span id="soaAccNo"></span></p>
+                    <p><strong>Email:</strong> <span id="soaEmail"></span></p>
+                    <p><strong>Location:</strong> <span id="soaBranch"></span></p>
+                    <p><strong>Start Date:</strong> <span id="soaSubDate"></span></p>
+                    <br>
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Amount</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td id="soaPlanDesc">Internet Subscription Fee</td>
+                            <td id="soaAmount">₱0.00</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <div class="invoice-total" style="margin-top: 1rem;">
+                        <h3>Total Balance Due: <span id="soaTotal" class="green-text">₱0.00</span></h3>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;" class="no-print">
+                        <button onclick="window.print()" class="btn btn-secondary">Print SOA</button>
+                        <button onclick="sendSOAEmail()" class="btn btn-accent" style="background-color: #10b981;">Send via Email</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. INVOICE TAB -->
+        <div id="tab-invoice" class="tab-content">
+            <div class="card no-print" style="max-width: 850px; margin: 0 auto;">
+                <h2>Generate Official Invoice</h2>
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label for="invoiceClientSelect">Select Subscriber</label>
+                    <select id="invoiceClientSelect"></select>
+                </div>
+                <button type="button" onclick="generateOfficialInvoice()" class="btn btn-accent" style="margin-top: 1rem;">Preview & Generate Invoice</button>
+            </div>
+
+            <div id="invoicePrintArea" style="display: none; max-width: 800px; margin: 2rem auto; background: #ffffff !important; color: #0f172a !important; padding: 2.5rem; border-radius: 8px; font-family: Arial, sans-serif; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #cbd5e1;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+                    <div>
+                        <h1 style="font-size: 1.6rem; color: #0f172a !important; font-weight: 700; margin: 0;">Invoice #<span id="invNumber">2020324825</span></h1>
+                        <p style="color: #475569 !important; font-size: 0.9rem; margin-top: 0.25rem;">Created date: <span id="invCreatedDate">Jul 27, 2026</span></p>
+                    </div>
+                    <div>
+                        <img src="logo.png" alt="RJPLUS Logo" style="height: 55px; width: auto; object-fit: contain;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; font-size: 0.9rem; line-height: 1.5; color: #0f172a !important;">
+                    <div>
+                        <strong style="color: #64748b !important; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; display: block; margin-bottom: 0.5rem;">FROM</strong>
+                        <strong style="color: #0f172a !important; font-size: 0.95rem;">RJPLUS Telecommunication Services</strong><br>
+                        Brgy. Santa Potenciana,<br>
+                        Mapanas Northern Samar 6412<br>
+                        Philippines
+                    </div>
+                    <div>
+                        <strong style="color: #64748b !important; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; display: block; margin-bottom: 0.5rem;">TO</strong>
+                        <strong id="invClientName" style="color: #0f172a !important; font-size: 0.95rem;">ruby ferreras</strong><br>
+                        <span id="invClientAddress" style="color: #0f172a !important;">Cabatuan, N. Samar</span><br>
+                        <span id="invClientLandmark" style="color: #475569 !important;">Landmark: near construction</span><br><br>
+                        Philippines
+                    </div>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.9rem; color: #0f172a !important;">
+                    <thead>
+                    <tr style="border-bottom: 1px solid #cbd5e1; color: #475569 !important; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: left;">
+                        <th style="padding: 0.75rem 0; width: 50%;">ITEM</th>
+                        <th style="padding: 0.75rem 0; text-align: right; width: 20%;">PRICE</th>
+                        <th style="padding: 0.75rem 0; text-align: center; width: 15%;">QUANTITY</th>
+                        <th style="padding: 0.75rem 0; text-align: right; width: 15%;">TOTAL</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr style="border-bottom: 1px solid #e2e8f0; color: #0f172a !important;">
+                        <td style="padding: 1rem 0;" id="invItemDesc">Plan 1000 Billing Period</td>
+                        <td style="padding: 1rem 0; text-align: right;" id="invItemPrice">₱1,000.00</td>
+                        <td style="padding: 1rem 0; text-align: center;">1</td>
+                        <td style="padding: 1rem 0; text-align: right; font-weight: 600;" id="invItemTotal">₱1,000.00</td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                    <div style="width: 250px; text-align: right; line-height: 1.8;">
+                        <div style="display: flex; justify-content: space-between; color: #475569 !important;">
+                            <span>SUBTOTAL</span>
+                            <strong style="color: #0f172a !important;" id="invSubtotal">₱1,000.00</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; color: #475569 !important; margin-top: 0.25rem;">
+                            <span>TOTAL</span>
+                            <strong style="color: #0f172a !important;" id="invTotal">₱1,000.00</strong>
+                        </div>
+                        <div style="margin-top: 0.5rem;">
+                            <span style="color: #0284c7; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em;">PAY ONLINE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; align-items: baseline; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                    <span style="font-size: 1rem; font-weight: 700; color: #0f172a !important; letter-spacing: 0.05em;">AMOUNT DUE</span>
+                    <span style="font-size: 1.4rem; font-weight: 800; color: #0f172a !important;" id="invAmountDue">₱1,000.00</span>
+                </div>
+                <div style="text-align: right; color: #475569 !important; font-size: 0.85rem; margin-top: 0.25rem;">
+                    Due <span id="invDueDate">Aug 3, 2026</span>
+                </div>
+
+                <div class="no-print" style="margin-top: 2rem; display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap;">
+                    <button onclick="window.print()" class="btn btn-primary" style="width: auto;">Print Invoice</button>
+                    <button onclick="sendInvoiceAsImage()" class="btn" style="width: auto; background-color: #0284c7; color: white; border: none; padding: 0.6rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer;">📸 Download PNG & Open Gmail</button>
+                    <button onclick="copyInvoiceImageToClipboard()" class="btn" style="width: auto; background-color: #10b981; color: white; border: none; padding: 0.6rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer;">📋 Copy Image & Open Gmail</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- MODALS -->
+<div id="addSubscriberModal" class="invoice-modal-overlay" style="display: none;">
+    <div class="client-dash-box" style="max-width: 550px; background: #1e293b; border-radius: 12px; padding: 1.5rem; color: white;">
+        <div class="dash-modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="font-size: 1.2rem; margin: 0;">Add New Subscriber</h2>
+            <button class="close-modal-btn" onclick="closeAddSubscriberModal()" style="background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer;">✖</button>
+        </div>
+        <hr style="border-color: #334155; margin: 1rem 0;">
+
+        <form id="subscriberForm">
+            <div class="form-group" style="margin-bottom: 0.8rem;">
+                <label style="display: block; font-size: 0.85rem; margin-bottom: 0.3rem;">Full Name</label>
+                <input type="text" id="cName" placeholder="e.g. Stephanie Pajanostan" required style="width: 100%; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
+            </div>
+            <div class="form-row" style="display: flex; gap: 0.75rem; margin-bottom: 0.8rem;">
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 0.3rem;">VLAN ID</label>
+                    <input type="text" id="cVlan" placeholder="VLAN-101" required style="width: 100%; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 0.3rem;">Email Address</label>
+                    <input type="email" id="cEmail" placeholder="stephanie@gmail.com" required style="width: 100%; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
+                </div>
+            </div>
+            <div class="form-row" style="display: flex; gap: 0.75rem; margin-bottom: 0.8rem;">
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 0.3rem;">Location / Branch</label>
+                    <select id="cArea" required style="width: 100%; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;"></select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 0.3rem;">Plan</label>
+                    <select id="cPlan" required style="width: 100%; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
+                        <option value="Plan 800">Plan 800</option>
+                        <option value="Plan 1000">Plan 1000</option>
+                        <option value="Plan 1500">Plan 1500</option>
+                        <option value="Plan 1899 Special">Plan 1899 Special</option>
+                        <option value="Plan 2000">Plan 2000</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row" style="display: flex; gap: 0.75rem; margin-bottom: 0.8rem;">
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 0.3rem;">Balance Due (₱)</label>
+                    <input type="number" id="cBalance" value="1000" required style="width: 100%; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 0.3rem;">Start Date</label>
+                    <input type="date" id="cSubDate" required style="width: 100%; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 0.8rem;">
+                <label style="display: block; font-size: 0.85rem; margin-bottom: 0.3rem;">Landmark / Address</label>
+                <input type="text" id="cLandmark" placeholder="Near Brgy. Hall" style="width: 100%; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
+            </div>
+            <div class="form-group" style="margin-bottom: 1.2rem;">
+                <label style="display: block; font-size: 0.85rem; margin-bottom: 0.3rem;">Account Status</label>
+                <select id="cStatus" style="width: 100%; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
+                    <option value="Active">Active</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Suspended">Suspended</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">Save Subscriber</button>
+        </form>
+    </div>
+</div>
+
+<div id="manageLocationsModal" class="invoice-modal-overlay" style="display: none;">
+    <div class="client-dash-box" style="max-width: 450px; background: #1e293b; border-radius: 12px; padding: 1.5rem; color: white;">
+        <div class="dash-modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="font-size: 1.2rem; margin: 0;">Manage Locations / Branches</h2>
+            <button class="close-modal-btn" onclick="closeManageLocationsModal()" style="background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer;">✖</button>
+        </div>
+        <hr style="border-color: #334155; margin: 1rem 0;">
+
+        <form id="branchForm" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+            <input type="text" id="bName" placeholder="New Location Name" required style="flex: 1; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
+            <button type="submit" class="btn btn-accent" style="width: auto; padding: 0.6rem 1rem;">Add</button>
+        </form>
+
+        <div class="table-wrapper" style="max-height: 250px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                <tr style="border-bottom: 1px solid #334155; color: #94a3b8; font-size: 0.85rem;">
+                    <th style="padding: 0.5rem; text-align: left;">Location</th>
+                    <th style="padding: 0.5rem; text-align: center;">Clients</th>
+                    <th style="padding: 0.5rem; text-align: center;">Action</th>
+                </tr>
+                </thead>
+                <tbody id="branchTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="billingNoticeModal" class="invoice-modal-overlay" style="display: none;">
+    <div class="client-dash-box" style="max-width: 520px; background: #1e293b; border-radius: 12px; padding: 1.5rem; color: white;">
+        <div class="dash-modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; margin: 0;">Send Billing Notice</h2>
+            <button class="close-modal-btn" onclick="closeNoticeModal()" style="background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer;">✖</button>
+        </div>
+        <hr style="border-color: #334155; margin: 1rem 0;">
+
+        <div>
+            <p style="margin: 0; font-size: 0.95rem;"><strong>Recipient:</strong> <span id="modalClientName" style="color: #34d399;">ruby ferreras</span></p>
+            <p style="margin: 0.25rem 0 1rem 0; font-size: 0.85rem; color: #94a3b8;" id="modalClientContact">VLAN ID: VLAN-101 | Email: rubyferreras37@gmail.com</p>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.4rem; font-weight: bold;">Select Template</label>
+            <select id="noticeTemplateSelect" onchange="updateNoticeMessage()" style="width: 100%; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
+                <option value="reminder">Billing Reminder</option>
+                <option value="overdue">Overdue Notice</option>
+                <option value="disconnection">Disconnection Warning</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.4rem; font-weight: bold;">Message Preview</label>
+            <textarea id="noticeMessageText" rows="6" style="width: 100%; padding: 0.75rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white; font-family: inherit; font-size: 0.88rem; line-height: 1.4; resize: vertical;"></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <button onclick="copyNoticeText()" class="btn" style="background: #475569; color: white; border: none; padding: 0.6rem; border-radius: 8px; cursor: pointer; font-weight: bold;">Copy</button>
+            <button onclick="sendGmailNotice()" class="btn" style="background: #10b981; color: white; border: none; padding: 0.6rem; border-radius: 8px; cursor: pointer; font-weight: bold;">Gmail</button>
+        </div>
+    </div>
+</div>
+
+<div id="clientDashboardModal" class="invoice-modal-overlay" style="display: none;">
+    <div class="client-dash-box">
+        <div class="dash-modal-header">
+            <div>
+                <h2 id="dashClientName" style="color: var(--primary);">Client Profile</h2>
+                <p id="dashClientDetails" style="font-size: 0.85rem; color: var(--text-muted);"></p>
+            </div>
+            <button class="close-modal-btn" onclick="closeClientDashboard()">✖</button>
+        </div>
+        <hr class="divider">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="stat-card">
+                <h3>Current Plan</h3>
+                <div id="dashClientPlan" style="font-weight: bold; font-size: 1.1rem;">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Current Balance</h3>
+                <div id="dashClientBalance" class="green-text" style="font-weight: bold; font-size: 1.1rem;">₱0.00</div>
+            </div>
+        </div>
+        <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem;">Payment History</h3>
+        <div class="table-wrapper" style="max-height: 200px; overflow-y: auto;">
+            <table>
+                <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Amount Paid</th>
+                </tr>
+                </thead>
+                <tbody id="dashPaymentHistory"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="editClientModal" class="invoice-modal-overlay" style="display: none;">
+    <div class="client-dash-box" style="max-width: 500px;">
+        <div class="dash-modal-header">
+            <h2>Edit Subscriber Info</h2>
+            <button class="close-modal-btn" onclick="closeEditModal()">✖</button>
+        </div>
+        <form id="editClientForm" style="margin-top: 1rem;">
+            <input type="hidden" id="editIndex">
+            <div class="form-group">
+                <label for="editName">Full Name</label>
+                <input type="text" id="editName" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editVlan">VLAN ID</label>
+                    <input type="text" id="editVlan" required>
+                </div>
+                <div class="form-group">
+                    <label for="editEmail">Email Address</label>
+                    <input type="email" id="editEmail" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editArea">Location</label>
+                    <select id="editArea" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="editPlan">Plan</label>
+                    <select id="editPlan" required>
+                        <option value="Plan 800">Plan 800</option>
+                        <option value="Plan 1000">Plan 1000</option>
+                        <option value="Plan 1500">Plan 1500</option>
+                        <option value="Plan 1899 Special">Plan 1899 Special</option>
+                        <option value="Plan 2000">Plan 2000</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editBalance">Balance Due (₱)</label>
+                    <input type="number" id="editBalance" required>
+                </div>
+                <div class="form-group">
+                    <label for="editSubDate">Due Date</label>
+                    <input type="date" id="editSubDate" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="editLandmark">Landmark</label>
+                <input type="text" id="editLandmark">
+            </div>
+            <div class="form-group">
+                <label for="editStatus">Status</label>
+                <select id="editStatus">
+                    <option value="Active">Active</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Suspended">Suspended</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Subscriber</button>
+        </form>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
